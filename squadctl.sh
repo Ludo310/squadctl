@@ -10,31 +10,31 @@ SQUAD_PORTS=(7777 27165 15000)  # Ports utilisés par le serveur Squad
 server_status() {
 	echo "--------------------"
     if screen -list | grep -q "$SCREEN_NAME"; then
-        echo -e " Le serveur Squad est \e[32mactif\e[0m."
+        echo -e "✅ Le serveur Squad est \e[32mactif\e[0m."
     else
-        echo -e " Le serveur Squad est \e[31minactif\e[0m."
+        echo -e "❌ Le serveur Squad est \e[31minactif\e[0m."
     fi
 }
 
 server_info() {
-	echo "--------------------"
-    echo -e " Informations sur le serveur Squad :"
-
+	echo "-------------------------------------------------------"
+    	echo -e "🌐 Informations sur le serveur Squad :"
+	echo "-------------------------------------------------------"
     # Vérifier si le serveur tourne
     if screen -list | grep -q "$SCREEN_NAME"; then
-        echo -e  "✔ Serveur Squad est \e[32mACTIF\e[0m."
+        echo -e  "✅ Serveur Squad est \e[32mACTIF\e[0m."
 
         # Récupérer le PID du serveur
         SERVER_PID=$(pgrep -f SquadGameServer)
-        echo -e " PID du serveur : $SERVER_PID"
+        echo -e "ℹ️ PID du serveur : $SERVER_PID"
 
         # Afficher les ports utilisés
-        echo -e " Ports ouverts par le serveur :"
+        echo -e "ℹ️ Ports ouverts par le serveur :"
         sudo ss -tulnp | grep SquadGameServer | awk '{print "   - Port : " $5}' | sort -u
 
         # Nombre de joueurs connectés (si dispo)
         PLAYER_COUNT=$(ss -tulnp | grep :7777 | wc -l)
-        echo -e " Joueurs connectés : $PLAYER_COUNT"
+        echo -e "👤 Joueurs connectés : $PLAYER_COUNT"
 
     else
         echo -e  "❌ Le serveur est \e[31mINACTIF\e[0m."
@@ -61,7 +61,7 @@ echo "--------------------"
 server_stop() {
 echo "--------------------"
     if screen -list | grep -q "$SCREEN_NAME"; then
-        echo -e " Arrêt du serveur Squad..."
+        echo -e "⚠️ Arrêt du serveur Squad..."
         screen -S "$SCREEN_NAME" -X quit
         sleep 3
         server_status
@@ -74,7 +74,7 @@ echo "--------------------"
 # Redémarrer le serveur
 server_restart() {
 echo "--------------------"
-    echo -e " Redémarrage du serveur Squad..."
+    echo -e "⚠️ Redémarrage du serveur Squad..."
     server_stop
     sleep 3
     server_start
@@ -83,23 +83,23 @@ echo "--------------------"
 # Ouvrir les ports avec UFW
 open_ports() {
 echo "--------------------"
-    echo -e " Ouverture des ports pour le serveur Squad..."
+    echo -e "✅ Ouverture des ports pour le serveur Squad..."
     for port in "${SQUAD_PORTS[@]}"; do
         sudo ufw allow $port/udp
     done
     sudo ufw status
-    echo -e "✅ Ports ouverts avec succès."
+    echo -e "ℹ️ Ports ouverts avec succès."
 }
 
 # Fermer les ports avec UFW
 close_ports() {
 echo "--------------------"
-    echo -e " Fermeture des ports pour le serveur Squad..."
+    echo -e "❌ Fermeture des ports pour le serveur Squad..."
     for port in "${SQUAD_PORTS[@]}"; do
         sudo ufw deny $port/udp
     done
     sudo ufw status
-    echo -e "✅ Ports fermés avec succès."
+    echo -e "ℹ️ Ports fermés avec succès."
 }
 
 # Afficher l'utilisation
