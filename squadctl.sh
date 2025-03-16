@@ -11,10 +11,12 @@ SERVER_USER=""  # Utilisateur sous lequel le serveur doit être exécuté (laiss
 server_status() {
     echo "--------------------"
     echo "🔍 Vérification de l'état du serveur..."
-    
-    SERVER_PID=$(pgrep -u "$SERVER_USER" -f "$SERVER_BIN" | head -n 1)
-    if [ -n "$SERVER_PID" ]; then
-        echo -e "✅ Le serveur Squad est \e[32mactif\e[0m (PID: $SERVER_PID)."
+
+    # Vérifie si une instance de SquadGameServer tourne
+    SERVER_PIDS=$(ps aux | grep "$SERVER_BIN" | grep -v grep | awk '{print $2}')
+
+    if [ -n "$SERVER_PIDS" ]; then
+        echo -e "✅ Le serveur Squad est \e[32mactif\e[0m (PID: $SERVER_PIDS)."
         return 0
     else
         echo -e "❌ Le serveur Squad est \e[31minactif\e[0m."
@@ -28,12 +30,16 @@ server_info() {
     echo "-------------------------------------------------------"
     echo "🔍 Vérification des détails du serveur..."
 
-    SERVER_PID=$(pgrep -u "$SERVER_USER" -f "$SERVER_BIN" | head -n 1)
-    if [ -n "$SERVER_PID" ]; then
-        echo -e "✅ Serveur Squad est \e[32mACTIF\e[0m (PID: $SERVER_PID)."
+    SERVER_PIDS=$(ps aux | grep "$SERVER_BIN" | grep -v grep | awk '{print $2}')
+    if [ -n "$SERVER_PIDS" ]; then
+        echo -e "✅ Serveur Squad est \e[32mACTIF\e[0m (PID: $SERVER_PIDS)."
+
+        # Afficher les ports utilisés par le serveur
         echo -e "ℹ️ Ports ouverts par le serveur :"
-        ss -tulnp | grep "SquadGameServer" | awk '{print "   - Port : " $5}' | sort -u
-        PLAYER_COUNT=$(ss -tulnp | grep :7777 | wc -l)
+        sudo ss -tulnp | grep "$SERVER_BIN" | awk '{print "   - Port : " $5}' | sort -u
+
+        # Vérifier le nombre de joueurs connectés
+        PLAYER_COUNT=$(sudo ss -tulnp | grep ":7777" | wc -l)
         echo -e "👤 Joueurs connectés : $PLAYER_COUNT"
     else
         echo -e "❌ Le serveur est \e[31mINACTIF\e[0m."
@@ -46,45 +52,58 @@ server_info() {
 server_start() {
     echo "--------------------"
     echo "🚀 Tentative de démarrage du serveur..."
-    if screen -list | grep -q "$SCREEN_NAME"; then
-        echo -e "⚠️ Le serveur est déjà démarré."
-    else
-        echo -e "✅ Démarrage du serveur Squad..."
-        cd "$SERVER_DIR" || { echo -e "❌ Impossible d'accéder au répertoire $SERVER_DIR"; exit 1; }
-        if [ ! -f "$SERVER_BIN" ]; then
-            echo -e "❌ Erreur : '$SERVER_BIN' introuvable dans '$SERVER_DIR'"
-            exit 1
-        fi
-        if [ -n "$SERVER_USER" ]; then
-            sudo -u "$SERVER_USER" bash -c "cd $SERVER_DIR && screen -dmS $SCREEN_NAME ./$SERVER_BIN"
-        else
-            screen -dmS "$SCREEN_NAME" "./$SERVER_BIN"
-        fi
-        sleep 3
-        server_status && open_ports
+
+    # Vérifie si le serveur est déjà en cours d'exécution
+    if ps aux | grep "$SERVER_BIN" | grep -v grep > /dev/null; then
+        echo "⚠️ Une instance du serveur tourne déjà. Annulation."
+        return
     fi
+
+    if [ -z "$SERVER_DIR" ] || [ -z "$SERVER_BIN" ]; then
+        echo "❌ Erreur : Chemin du serveur ou exécutable non défini."
+        return
+    fi
+
+    cd "$SERVER_DIR" || { echo -e "❌ Impossible d'accéder au répertoire $SERVER_DIR"; exit 1; }
+
+    if [ ! -f "$SERVER_BIN" ]; then
+        echo -e "❌ Erreur : '$SERVER_BIN' introuvable dans '$SERVER_DIR'"
+        return
+    fi
+
+    if [ -n "$SERVER_USER" ]; then
+        sudo -u "$SERVER_USER" screen -dmS "$SCREEN_NAME" ./"$SERVER_BIN"
+    else
+        screen -dmS "$SCREEN_NAME" ./"$SERVER_BIN"
+    fi
+
+    sleep 3
+    server_status && open_ports
 }
 
 # Arrêter le serveur
 server_stop() {
     echo "--------------------"
     echo "🛑 Tentative d'arrêt du serveur..."
+
+    # Récupérer tous les PID du serveur
+    SERVER_PIDS=$(ps aux | grep "$SERVER_BIN" | grep -v grep | awk '{print $2}')
     
-    SERVER_PIDS=$(pgrep -u "$SERVER_USER" -f "$SERVER_BIN")
     if [ -n "$SERVER_PIDS" ]; then
-        echo -e "⚠️ Arrêt des processus liés à SquadGameServer..."
-        for PID in $SERVER_PIDS; do
-            sudo kill -SIGTERM "$PID" 2>/dev/null
-            sleep 1
-            sudo kill -SIGKILL "$PID" 2>/dev/null
+        echo "⚠️ Arrêt de tous les processus SquadGameServer..."
+        sudo pkill -f "$SERVER_BIN"
+        sleep 3
+    fi
+
+    # Fermer toutes les sessions `screen`
+    SCREEN_SESSIONS=$(screen -ls | grep "$SCREEN_NAME" | awk '{print $1}')
+    if [ -n "$SCREEN_SESSIONS" ]; then
+        echo "🛑 Fermeture des sessions screen..."
+        for session in $SCREEN_SESSIONS; do
+            screen -S "$session" -X quit
         done
     fi
-    
-    if screen -list | grep -q "$SCREEN_NAME"; then
-        echo -e "⚠️ Suppression de la session screen..."
-        screen -S "$SCREEN_NAME" -X quit
-    fi
-    
+
     sleep 3
     server_status
     close_ports
