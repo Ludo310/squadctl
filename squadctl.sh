@@ -12,8 +12,10 @@ server_status() {
     echo "🔍 Vérification de l'état du serveur..."
     if screen -list | grep -q "$SCREEN_NAME"; then
         echo -e "✅ Le serveur Squad est \e[32mactif\e[0m."
+        return 0
     else
         echo -e "❌ Le serveur Squad est \e[31minactif\e[0m."
+        return 1
     fi
 }
 
@@ -51,8 +53,7 @@ server_start() {
         cd "$SERVER_DIR" || { echo -e "❌ Impossible d'accéder au répertoire $SERVER_DIR"; exit 1; }
         screen -dmS "$SCREEN_NAME" ."/$SERVER_BIN"
         sleep 3
-        server_status
-        open_ports
+        server_status && open_ports
     fi
 }
 
