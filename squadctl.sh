@@ -12,14 +12,9 @@ server_status() {
     echo "--------------------"
     echo "🔍 Vérification de l'état du serveur..."
     
-    if [ -z "$SERVER_USER" ]; then
-        STATUS_CHECK="pgrep -f \"$SERVER_BIN\""
-    else
-        STATUS_CHECK="sudo -u \"$SERVER_USER\" pgrep -f \"$SERVER_BIN\""
-    fi
-
-    if eval $STATUS_CHECK > /dev/null; then
-        echo -e "✅ Le serveur Squad est \e[32mactif\e[0m."
+    SERVER_PID=$(pgrep -u "$SERVER_USER" -f "$SERVER_BIN" | head -n 1)
+    if [ -n "$SERVER_PID" ]; then
+        echo -e "✅ Le serveur Squad est \e[32mactif\e[0m (PID: $SERVER_PID)."
         return 0
     else
         echo -e "❌ Le serveur Squad est \e[31minactif\e[0m."
@@ -33,19 +28,12 @@ server_info() {
     echo "-------------------------------------------------------"
     echo "🔍 Vérification des détails du serveur..."
 
-    if [ -z "$SERVER_USER" ]; then
-        INFO_CHECK="pgrep -f \"$SERVER_BIN\""
-    else
-        INFO_CHECK="sudo -u \"$SERVER_USER\" pgrep -f \"$SERVER_BIN\""
-    fi
-
-    if eval $INFO_CHECK > /dev/null; then
-        echo -e "✅ Serveur Squad est \e[32mACTIF\e[0m."
-        SERVER_PID=$(eval $INFO_CHECK)
-        echo -e "ℹ️ PID du serveur : $SERVER_PID"
+    SERVER_PID=$(pgrep -u "$SERVER_USER" -f "$SERVER_BIN" | head -n 1)
+    if [ -n "$SERVER_PID" ]; then
+        echo -e "✅ Serveur Squad est \e[32mACTIF\e[0m (PID: $SERVER_PID)."
         echo -e "ℹ️ Ports ouverts par le serveur :"
-        sudo -u "$SERVER_USER" ss -tulnp | grep SquadGameServer | awk '{print "   - Port : " $5}' | sort -u
-        PLAYER_COUNT=$(sudo -u "$SERVER_USER" ss -tulnp | grep :7777 | wc -l)
+        ss -tulnp | grep "SquadGameServer" | awk '{print "   - Port : " $5}' | sort -u
+        PLAYER_COUNT=$(ss -tulnp | grep :7777 | wc -l)
         echo -e "👤 Joueurs connectés : $PLAYER_COUNT"
     else
         echo -e "❌ Le serveur est \e[31mINACTIF\e[0m."
@@ -68,7 +56,7 @@ server_start() {
             exit 1
         fi
         if [ -n "$SERVER_USER" ]; then
-            sudo -u "$SERVER_USER" screen -dmS "$SCREEN_NAME" "./$SERVER_BIN"
+            sudo -u "$SERVER_USER" bash -c "cd $SERVER_DIR && screen -dmS $SCREEN_NAME ./$SERVER_BIN"
         else
             screen -dmS "$SCREEN_NAME" "./$SERVER_BIN"
         fi
