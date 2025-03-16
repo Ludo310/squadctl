@@ -51,6 +51,10 @@ server_start() {
     else
         echo -e "✅ Démarrage du serveur Squad..."
         cd "$SERVER_DIR" || { echo -e "❌ Impossible d'accéder au répertoire $SERVER_DIR"; exit 1; }
+        if [ ! -f "$SERVER_BIN" ]; then
+            echo -e "❌ Erreur : '$SERVER_BIN' introuvable dans '$SERVER_DIR'"
+            exit 1
+        fi
         screen -dmS "$SCREEN_NAME" ."/$SERVER_BIN"
         sleep 3
         server_status && open_ports
