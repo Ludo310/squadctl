@@ -5,6 +5,7 @@ SERVER_DIR=""  # Chemin vers le dossier contenant 'SquadGameServer'
 SERVER_BIN="SquadGameServer"  # Nom de l'exécutable du serveur
 SCREEN_NAME="squad"
 SQUAD_PORTS=(7777 27165 15000)  # Ports utilisés par le serveur Squad
+SERVER_USER=""  # Utilisateur sous lequel le serveur doit être exécuté (laisser vide par défaut)
 
 # Vérifier si le serveur est actif
 server_status() {
@@ -55,7 +56,11 @@ server_start() {
             echo -e "❌ Erreur : '$SERVER_BIN' introuvable dans '$SERVER_DIR'"
             exit 1
         fi
-        screen -dmS "$SCREEN_NAME" ."/$SERVER_BIN"
+        if [ -n "$SERVER_USER" ]; then
+            sudo -u "$SERVER_USER" screen -dmS "$SCREEN_NAME" ."/$SERVER_BIN"
+        else
+            screen -dmS "$SCREEN_NAME" ."/$SERVER_BIN"
+        fi
         sleep 3
         server_status && open_ports
     fi
