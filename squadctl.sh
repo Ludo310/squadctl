@@ -12,8 +12,13 @@ server_status() {
     echo "--------------------"
     echo "🔍 Vérification de l'état du serveur..."
     
-    # Vérifier si le serveur tourne avec l'utilisateur défini
-    if sudo -u "$SERVER_USER" pgrep -f "$SERVER_BIN" > /dev/null; then
+    if [ -z "$SERVER_USER" ]; then
+        STATUS_CHECK="pgrep -f \"$SERVER_BIN\""
+    else
+        STATUS_CHECK="sudo -u \"$SERVER_USER\" pgrep -f \"$SERVER_BIN\""
+    fi
+
+    if eval $STATUS_CHECK > /dev/null; then
         echo -e "✅ Le serveur Squad est \e[32mactif\e[0m."
         return 0
     else
@@ -28,18 +33,18 @@ server_info() {
     echo "-------------------------------------------------------"
     echo "🔍 Vérification des détails du serveur..."
 
-    if sudo -u "$SERVER_USER" pgrep -f "$SERVER_BIN" > /dev/null; then
+    if [ -z "$SERVER_USER" ]; then
+        INFO_CHECK="pgrep -f \"$SERVER_BIN\""
+    else
+        INFO_CHECK="sudo -u \"$SERVER_USER\" pgrep -f \"$SERVER_BIN\""
+    fi
+
+    if eval $INFO_CHECK > /dev/null; then
         echo -e "✅ Serveur Squad est \e[32mACTIF\e[0m."
-        
-        # Récupérer le PID du serveur
-        SERVER_PID=$(sudo -u "$SERVER_USER" pgrep -f "$SERVER_BIN")
+        SERVER_PID=$(eval $INFO_CHECK)
         echo -e "ℹ️ PID du serveur : $SERVER_PID"
-        
-        # Afficher les ports utilisés par le serveur
         echo -e "ℹ️ Ports ouverts par le serveur :"
         sudo -u "$SERVER_USER" ss -tulnp | grep SquadGameServer | awk '{print "   - Port : " $5}' | sort -u
-        
-        # Vérifier le nombre de joueurs connectés
         PLAYER_COUNT=$(sudo -u "$SERVER_USER" ss -tulnp | grep :7777 | wc -l)
         echo -e "👤 Joueurs connectés : $PLAYER_COUNT"
     else
@@ -63,9 +68,9 @@ server_start() {
             exit 1
         fi
         if [ -n "$SERVER_USER" ]; then
-            sudo -u "$SERVER_USER" screen -dmS "$SCREEN_NAME" ."/$SERVER_BIN"
+            sudo -u "$SERVER_USER" screen -dmS "$SCREEN_NAME" "./$SERVER_BIN"
         else
-            screen -dmS "$SCREEN_NAME" ."/$SERVER_BIN"
+            screen -dmS "$SCREEN_NAME" "./$SERVER_BIN"
         fi
         sleep 3
         server_status && open_ports
