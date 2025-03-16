@@ -69,15 +69,25 @@ server_start() {
 server_stop() {
     echo "--------------------"
     echo "🛑 Tentative d'arrêt du serveur..."
-    if screen -list | grep -q "$SCREEN_NAME"; then
-        echo -e "⚠️ Arrêt du serveur Squad..."
-        screen -S "$SCREEN_NAME" -X quit
-        sleep 3
-        server_status
-        close_ports
-    else
-        echo -e "⚠️ Le serveur n'est pas en cours d'exécution."
+    
+    SERVER_PIDS=$(pgrep -u "$SERVER_USER" -f "$SERVER_BIN")
+    if [ -n "$SERVER_PIDS" ]; then
+        echo -e "⚠️ Arrêt des processus liés à SquadGameServer..."
+        for PID in $SERVER_PIDS; do
+            sudo kill -SIGTERM "$PID" 2>/dev/null
+            sleep 1
+            sudo kill -SIGKILL "$PID" 2>/dev/null
+        done
     fi
+    
+    if screen -list | grep -q "$SCREEN_NAME"; then
+        echo -e "⚠️ Suppression de la session screen..."
+        screen -S "$SCREEN_NAME" -X quit
+    fi
+    
+    sleep 3
+    server_status
+    close_ports
 }
 
 # Redémarrer le serveur
