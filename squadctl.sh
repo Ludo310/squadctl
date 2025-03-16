@@ -11,7 +11,9 @@ SERVER_USER=""  # Utilisateur sous lequel le serveur doit être exécuté (laiss
 server_status() {
     echo "--------------------"
     echo "🔍 Vérification de l'état du serveur..."
-    if screen -list | grep -q "$SCREEN_NAME"; then
+    
+    # Vérifier si le serveur tourne avec l'utilisateur défini
+    if sudo -u "$SERVER_USER" pgrep -f "$SERVER_BIN" > /dev/null; then
         echo -e "✅ Le serveur Squad est \e[32mactif\e[0m."
         return 0
     else
@@ -25,16 +27,20 @@ server_info() {
     echo -e "🌐 Informations sur le serveur Squad :"
     echo "-------------------------------------------------------"
     echo "🔍 Vérification des détails du serveur..."
-    if screen -list | grep -q "$SCREEN_NAME"; then
+
+    if sudo -u "$SERVER_USER" pgrep -f "$SERVER_BIN" > /dev/null; then
         echo -e "✅ Serveur Squad est \e[32mACTIF\e[0m."
-
-        SERVER_PID=$(pgrep -f SquadGameServer)
+        
+        # Récupérer le PID du serveur
+        SERVER_PID=$(sudo -u "$SERVER_USER" pgrep -f "$SERVER_BIN")
         echo -e "ℹ️ PID du serveur : $SERVER_PID"
-
+        
+        # Afficher les ports utilisés par le serveur
         echo -e "ℹ️ Ports ouverts par le serveur :"
-        sudo ss -tulnp | grep SquadGameServer | awk '{print "   - Port : " $5}' | sort -u
-
-        PLAYER_COUNT=$(ss -tulnp | grep :7777 | wc -l)
+        sudo -u "$SERVER_USER" ss -tulnp | grep SquadGameServer | awk '{print "   - Port : " $5}' | sort -u
+        
+        # Vérifier le nombre de joueurs connectés
+        PLAYER_COUNT=$(sudo -u "$SERVER_USER" ss -tulnp | grep :7777 | wc -l)
         echo -e "👤 Joueurs connectés : $PLAYER_COUNT"
     else
         echo -e "❌ Le serveur est \e[31mINACTIF\e[0m."
